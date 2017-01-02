@@ -13,6 +13,9 @@
 #define bool_false 0b00101111
 #define bool_true  0b01101111
 
+#define bool_mask  0b00011111
+#define bool_tag   0b00001111
+
 #define empty_list 0b00111111
 
 // all scheme values are of type ptr
