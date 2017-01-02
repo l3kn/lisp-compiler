@@ -17,6 +17,7 @@
 
 // all scheme values are of type ptr
 typedef unsigned int ptr;
+extern ptr scheme_entry();
 
 static void print_ptr(ptr x) {
   if ((x & fixnum_mask) == fixnum_tag) {

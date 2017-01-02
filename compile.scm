@@ -1,3 +1,5 @@
+(include "primitives.scm")
+
 (define wordsize 4)
 
 (define bool_false #b00101111)
@@ -20,10 +22,11 @@
   (and (integer? x)
        (<= fixnum_lower x fixnum_upper)))
 
-
 (define (immediate? x)
   (or (fixnum? x)
-      (boolean? x)))
+      (boolean? x)
+      (char? x)
+      (null? x)))
 
 (define (immediate-rep x)
   (cond
@@ -37,17 +40,34 @@
         char_tag))
     (else (error "Invalid expression: " x))))
 
+
 (define (emit output)
   (print output))
 
-(define (compile x)
+(define (emit-expr expr)
+  ; (error (car expr))
+  (if (immediate? expr)
+    (print "  mov eax, " (immediate-rep expr))
+    (begin
+      (let ((result (assoc (car expr) primitives)))
+        (if result
+          ((cadr result) (cdr expr))
+          (error "Unknown primitive: " (car expr)))))))
+
+(define (emit-program expr)
   (emit "  .intel_syntax noprefix")
   (emit "  .text")
   (emit "  .globl scheme_entry")
   (emit "  .type scheme_entry, @function")
   (emit "scheme_entry:")
-  (print "  mov eax, " (immediate-rep x))
+  (emit-expr expr)
   (emit "  ret")
   (emit "  .size scheme_entry, .-scheme_entry"))
 
-(compile #\b)
+; (emit-program '(fxzero? 0))
+; (emit-program '(boolean? #\A))
+; (emit-program '(char->fixnum #\A))
+; (emit-program '(fixnum->char 65))
+; (emit-program '(not #t))
+(emit-program '(fxlognot -11))
+; (emit-program 10)
