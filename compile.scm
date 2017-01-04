@@ -125,5 +125,6 @@
 ; (emit-program
 ;   '(fx+ 10
 ;         (if #t 20 30)))
-(emit-program '(char<? #\Z #\B))
+; (emit-program '(char<? #\Z #\B))
+; (emit-program '(fx=? 1 2)) 
 
