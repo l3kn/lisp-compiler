@@ -3,8 +3,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define wordsize 4
-
 #define fixnum_shift 2
 #define fixnum_mask 0b11
 #define fixnum_tag 0b00
@@ -22,7 +20,7 @@
 #define empty_list 0b00111111
 
 // all scheme values are of type ptr
-typedef unsigned int ptr;
+typedef unsigned long ptr;
 extern ptr scheme_entry();
 
 static void print_ptr(ptr x) {
@@ -96,7 +94,7 @@ static void deallocate_protected_space(char* p, int size) {
 }
 
 int main(int argc, char** argv) {
-  int stack_size = (16 * 4096); // 16k 32bit cells
+  int stack_size = (4 * 4 * 4096); // 16k 64bit cells
 
   char* stack_top = allocate_protected_space(stack_size);
   char* stack_base = stack_top + stack_size;
