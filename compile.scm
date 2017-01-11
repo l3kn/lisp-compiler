@@ -4,6 +4,7 @@
 (include "syntax/derived/or.scm")
 (include "syntax/if.scm")
 (include "syntax/let.scm")
+(include "syntax/cons.scm")
 (include "procedures.scm")
 (include "primitives.scm")
 
@@ -80,6 +81,7 @@
     ((let? expr) (emit-let stack-index env expr))
     ((let*? expr) (emit-let* stack-index env expr))
     ((apply? expr) (emit-apply stack-index env expr))
+    ((cons? expr) (emit-cons stack-index env expr))
     ((primitive? expr)
      (emit-comment (car expr))
      ((lookup-primitive (car expr)) stack-index env (cdr expr))
@@ -114,6 +116,7 @@
     ((let? expr) (emit-tail-let stack-index env expr))
     ((let*? expr) (emit-tail-let* stack-index env expr))
     ((apply? expr) (emit-tail-apply stack-index env expr))
+    ((cons? expr) (emit-cons stack-index env expr))
     ((primitive? expr)
      (emit-comment (car expr))
      ((lookup-primitive (car expr)) stack-index env (cdr expr))
@@ -151,15 +154,29 @@
   (emit "  ret")
   (emit "  .text")
   (emit-function-header "scheme_entry")
-  ; Store stack pointer
-  (emit "  mov rcx, rsp")
-  ; Load new stack pointer,
+  (emit-function-header "scheme_entry")
   ; 64bit calling convention:
   ; RDI, RSI, RDX, RCX (R10 in the Linux kernel interface), R8, and R9
-  (emit "  mov rsp, rdi")
+  ; ctxt: RDI
+  ; stack_base: RSI
+  ; heap: RDX
+  (emit-comment "store register contents in ctxt")
+  (emit "  mov rcx, rdi")
+  (emit "  mov [rcx + 8], rbx")
+  (emit "  mov [rcx + 32], rsi")
+  (emit "  mov [rcx + 40], rdi")
+  (emit "  mov [rcx + 48], rbp")
+  (emit "  mov [rcx + 56], rsp")
+  (emit-comment "load stack_base and heap addresses")
+  (emit "  mov rsp, rsi")
+  (emit "  mov rbp, rdx")
   (emit "  call scheme_body")
-  ; Restore stack pointer
-  (emit "  mov rsp, rcx")
+  (emit-comment "store register contents in ctxt")
+  (emit "  mov rbx, [rcx + 8]")
+  (emit "  mov rsi, [rcx + 32]")
+  (emit "  mov rdi, [rcx + 40]")
+  (emit "  mov rbp, [rcx + 48]")
+  (emit "  mov rsp, [rcx + 56]")
   (emit "  ret"))
 
 (define (emit-tail-scheme-entry expr env)
@@ -168,15 +185,28 @@
   (emit "  ret")
   (emit "  .text")
   (emit-function-header "scheme_entry")
-  ; Store stack pointer
-  (emit "  mov rcx, rsp")
-  ; Load new stack pointer,
   ; 64bit calling convention:
   ; RDI, RSI, RDX, RCX (R10 in the Linux kernel interface), R8, and R9
-  (emit "  mov rsp, rdi")
+  ; ctxt: RDI
+  ; stack_base: RSI
+  ; heap: RDX
+  (emit-comment "store register contents in ctxt")
+  (emit "  mov rcx, rdi")
+  (emit "  mov [rcx + 8], rbx")
+  (emit "  mov [rcx + 32], rsi")
+  (emit "  mov [rcx + 40], rdi")
+  (emit "  mov [rcx + 48], rbp")
+  (emit "  mov [rcx + 56], rsp")
+  (emit-comment "load stack_base and heap addresses")
+  (emit "  mov rsp, rsi")
+  (emit "  mov rbp, rdx")
   (emit "  call scheme_body")
-  ; Restore stack pointer
-  (emit "  mov rsp, rcx")
+  (emit-comment "store register contents in ctxt")
+  (emit "  mov rbx, [rcx + 8]")
+  (emit "  mov rsi, [rcx + 32]")
+  (emit "  mov rdi, [rcx + 40]")
+  (emit "  mov rbp, [rcx + 48]")
+  (emit "  mov rsp, [rcx + 56]")
   (emit "  ret"))
 
 (define (emit-function-header name)
@@ -214,10 +244,13 @@
 ;                 acc
 ;                 (apply sum (fxsub1 n) (fx+ n acc))))))
 ;      (apply sum 6000 0)))
-(emit-program
-  '(letrec
-     ((fac (lambda (n)
-            (if (fxzero? n)
-                0
-                (fx+ n (apply fac (fxsub1 n)))))))
-     (apply fac 4000)))
+; (emit-program
+;   '(letrec
+;      ((fac (lambda (n)
+;             (if (fxzero? n)
+;                 0
+;                 (fx+ n (apply fac (fxsub1 n)))))))
+;      (apply fac 4000)))
+(emit-program '(let
+                 ((x (cons 1 2)))
+                 (cdr x)))

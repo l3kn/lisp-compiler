@@ -1,0 +1,13 @@
+(define (cons? expr) (tagged-list? expr 'cons))
+
+(define (emit-cons stack-index env expr)
+  (emit-comment "cons, car")
+  (emit-expr stack-index env (cadr expr))
+  (emit "  mov [rbp + 0], rax")
+  (emit-comment "cons, cdr")
+  (emit-expr stack-index env (caddr expr))
+  (emit "  mov [rbp + 8], rax")
+  (emit "  mov rax, rbp")
+  (print "  or  rax, " pair_tag)
+  (emit "  add rbp, 16") 
+)

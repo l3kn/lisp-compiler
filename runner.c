@@ -19,6 +19,20 @@
 
 #define empty_list 0b00111111
 
+#define pair_mask 0b00000111
+#define pair_tag 0b00000001
+
+typedef struct {
+  void* rax; /* 0 scratch */
+  void* rbx; /* 8 preserve */
+  void* rcx; /* 16 scratch */
+  void* rdx; /* 24 scratch */
+  void* rsi; /* 32 preserve */
+  void* rdi; /* 40 preserve */
+  void* rbp; /* 48 preserve */
+  void* rsp; /* 56 preserve */
+} context;
+
 // all scheme values are of type ptr
 typedef unsigned long ptr;
 extern ptr scheme_entry();
@@ -28,6 +42,8 @@ static void print_ptr(ptr x) {
     printf("%d", ((int)x) >> fixnum_shift);
   } else if ((x & char_mask) == char_tag) {
     printf("#\\%c", (char)(((int)x) >> char_shift));
+  } else if ((x & pair_mask) == pair_tag) {
+    printf("( . )");
   } else if (x == bool_true) {
     printf("#t");
   } else if (x == bool_false) {
@@ -95,12 +111,16 @@ static void deallocate_protected_space(char* p, int size) {
 
 int main(int argc, char** argv) {
   int stack_size = (4 * 4 * 4096); // 16k 64bit cells
-
   char* stack_top = allocate_protected_space(stack_size);
   char* stack_base = stack_top + stack_size;
 
-  print_ptr(scheme_entry(stack_base));
+  int heap_size = (4 * 4 * 4096);
+  char* heap = allocate_protected_space(heap_size);
+
+  context ctxt;
+  print_ptr(scheme_entry(&ctxt, stack_base, heap));
 
   deallocate_protected_space(stack_top, stack_size);
+  deallocate_protected_space(heap, heap_size);
   return 0;
 }

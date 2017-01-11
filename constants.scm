@@ -15,3 +15,6 @@
 (define fixnum_bits (- (* wordsize 8) fixnum_shift))
 (define fixnum_lower (- (expt 2 (- fixnum_bits 1))))
 (define fixnum_upper (sub1 (expt 2 (- fixnum_bits 1))))
+
+(define pair_mask #b111)
+(define pair_tag #b001)

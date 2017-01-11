@@ -1,8 +1,5 @@
 (include "label.scm")
 
-(define (emit-comment . args)
-  (apply print (cons "  # " args)))
-
 (define raw-predicates
   (list
     (list 'fxzero?
@@ -156,6 +153,20 @@
           (lambda (stack-index env args)
             (emit-comparison stack-index env (car args) (cadr args))
             (emit-test stack-index env "jgt")))
+    (list 'car
+          (lambda (stack-index env args)
+            (emit-expr stack-index env (car args))
+            ; Remove the tag of the pair value
+            ; to get the address
+            (print "  and al, " #b11111000)
+            (print "  mov rax, [rax]")))
+    (list 'cdr
+          (lambda (stack-index env args)
+            (emit-expr stack-index env (car args))
+            ; Remove the tag of the pair value
+            ; to get the address
+            (print "  and al, " #b11111000)
+            (print "  mov rax, [rax + 8]")))
     )
   )
 
