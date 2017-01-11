@@ -37,13 +37,18 @@ typedef struct {
 typedef unsigned long ptr;
 extern ptr scheme_entry();
 
-static void print_ptr(ptr x) {
+static void print_ptr(ptr x, char* heap) {
   if ((x & fixnum_mask) == fixnum_tag) {
     printf("%d", ((int)x) >> fixnum_shift);
   } else if ((x & char_mask) == char_tag) {
     printf("#\\%c", (char)(((int)x) >> char_shift));
   } else if ((x & pair_mask) == pair_tag) {
-    printf("( . )");
+    ptr* cons = (ptr*)((x >> 3) << 3);
+    printf("(");
+    print_ptr(cons[0], heap);
+    printf(" . ");
+    print_ptr(cons[1], heap);
+    printf(")");
   } else if (x == bool_true) {
     printf("#t");
   } else if (x == bool_false) {
@@ -53,8 +58,6 @@ static void print_ptr(ptr x) {
   } else {
     printf("#<unknown 0x%08x>", x);
   }
-
-  printf("\n");
 }
 
 static char* allocate_protected_space(int size) {
@@ -118,7 +121,8 @@ int main(int argc, char** argv) {
   char* heap = allocate_protected_space(heap_size);
 
   context ctxt;
-  print_ptr(scheme_entry(&ctxt, stack_base, heap));
+  print_ptr(scheme_entry(&ctxt, stack_base, heap), heap);
+  printf("\n");
 
   deallocate_protected_space(stack_top, stack_size);
   deallocate_protected_space(heap, heap_size);

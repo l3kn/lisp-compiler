@@ -251,6 +251,4 @@
 ;                 0
 ;                 (fx+ n (apply fac (fxsub1 n)))))))
 ;      (apply fac 4000)))
-(emit-program '(let
-                 ((x (cons 1 2)))
-                 (cdr x)))
+(emit-program '(cons (cons 1 2) (cons 3 4)))
