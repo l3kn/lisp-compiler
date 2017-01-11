@@ -3,5 +3,5 @@
 ## TODO
 
 - [ ] Refactor `emit-tail` functions
-- [ ] Refactor primitives
+- [x] Refactor primitives
 - [ ] Find a way to make the code for `cons` shorter

@@ -4,9 +4,12 @@
 (include "syntax/derived/or.scm")
 (include "syntax/if.scm")
 (include "syntax/let.scm")
-(include "syntax/cons.scm")
-(include "procedures.scm")
 (include "primitives.scm")
+(include "procedures.scm")
+(include "features/pairs.scm")
+(include "features/fixnums.scm")
+(include "features/chars.scm")
+(include "features/type_conversions.scm")
 
 (define (tagged-list? expr tag)
   (and (pair? expr)
@@ -237,13 +240,13 @@
 ;            (y (fx+ x 1)))
 ;        y)))
 
-; (emit-program
-;   '(letrec
-;      ((sum (lambda (n acc)
-;             (if (fxzero? n)
-;                 acc
-;                 (apply sum (fxsub1 n) (fx+ n acc))))))
-;      (apply sum 6000 0)))
+(emit-program
+  '(letrec
+     ((sum (lambda (n acc)
+            (if (fxzero? n)
+                acc
+                (apply sum (fxsub1 n) (fx+ n acc))))))
+     (apply sum 6000 0)))
 ; (emit-program
 ;   '(letrec
 ;      ((fac (lambda (n)
@@ -251,4 +254,4 @@
 ;                 0
 ;                 (fx+ n (apply fac (fxsub1 n)))))))
 ;      (apply fac 4000)))
-(emit-program '(cons (cons 1 2) (cons 3 4)))
+; (emit-program '(cons (cons 1 2) (cons 3 4)))
