@@ -25,6 +25,12 @@
               (emit-expr stack-index env arg)
               (print "  and rax, " bool_mask)
               (print "  cmp rax, " bool_tag))))
+    (list 'pair?
+          (lambda (stack-index env args)
+            (let ((arg (car args)))
+              (emit-expr stack-index env arg)
+              (print "  and rax, " pair_mask)
+              (print "  cmp rax, " pair_tag))))
     (list 'null?
           (lambda (stack-index env args)
             (let ((arg (car args)))
