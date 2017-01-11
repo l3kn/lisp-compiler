@@ -2,6 +2,8 @@
 
 ## TODO
 
-[ ] Refactor `emit-tail` functions
-[ ] Refactor primitives
-[ ] Find a way to make the code for `cons` shorter
+[] Refactor `emit-tail` functions
+
+[] Refactor primitives
+
+[] Find a way to make the code for `cons` shorter
