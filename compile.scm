@@ -1,4 +1,5 @@
-(include "constants.scm")
+(define wordsize 8)
+
 (include "environment.scm")
 (include "syntax/derived/and.scm")
 (include "syntax/derived/or.scm")
@@ -6,7 +7,9 @@
 (include "syntax/let.scm")
 (include "primitives.scm")
 (include "procedures.scm")
+(include "features/booleans.scm")
 (include "features/pairs.scm")
+(include "features/vectors.scm")
 (include "features/fixnums.scm")
 (include "features/chars.scm")
 (include "features/type_conversions.scm")
@@ -14,10 +17,6 @@
 (define (tagged-list? expr tag)
   (and (pair? expr)
        (eq? (car expr) tag)))
-
-(define (fixnum? x)
-  (and (integer? x)
-       (<= fixnum_lower x fixnum_upper)))
 
 (define (immediate? x)
   (or (fixnum? x)
@@ -40,10 +39,13 @@
 (define (variable? expr) (symbol? expr))
 
 (define (emit-comment . args)
-  (apply print (cons "  # " args)))
+  (apply emit (cons "  # " args)))
 
-(define (next-stack-index stack-index) (+ stack-index wordsize))
-(define (prev-stack-index stack-index) (- stack-index wordsize))
+(define (next-stack-index stack-index) (next-stack-index-n stack-index 1))
+(define (prev-stack-index stack-index) (prev-stack-index-n stack-index 1))
+
+(define (next-stack-index-n stack-index n) (+ stack-index (* n wordsize)))
+(define (prev-stack-index-n stack-index n) (- stack-index (* n wordsize)))
 
 (define (emit-variable-ref env var)
   (let ((location (lookup var env)))
@@ -59,19 +61,19 @@
 
 (define (emit-stack-save stack-index env expr)
   (if (immediate? expr)
-    (print "  mov [rsp - " stack-index "], QWORD PTR " (immediate-rep expr))
+    (emit "  mov [rsp - " stack-index "], QWORD PTR " (immediate-rep expr))
     (begin
       (emit-expr stack-index env expr)
-      (print "  mov [rsp - " stack-index "], rax"))))
+      (emit "  mov [rsp - " stack-index "], rax"))))
 
 (define (emit-stack-load stack-index)
-  (print "  mov rax, [rsp - " stack-index "]"))
+  (emit "  mov rax, [rsp - " stack-index "]"))
 
-(define (emit output)
-  (print output))
+(define (emit . output)
+  (apply print output))
 
 (define (emit-immediate expr)
-  (print "  mov rax, QWORD PTR " (immediate-rep expr)))
+  (emit "  mov rax, QWORD PTR " (immediate-rep expr)))
 
 (define (emit-expr stack-index env expr)
   (cond
@@ -84,7 +86,6 @@
     ((let? expr) (emit-let stack-index env expr))
     ((let*? expr) (emit-let* stack-index env expr))
     ((apply? expr) (emit-apply stack-index env expr))
-    ((cons? expr) (emit-cons stack-index env expr))
     ((primitive? expr)
      (emit-comment (car expr))
      ((lookup-primitive (car expr)) stack-index env (cdr expr))
@@ -95,12 +96,12 @@
              (end-label (unique-label "end")))
          (emit-comment (car expr))
          (raw-predicate stack-index env (cdr expr))
-         (print "  je " true-label)
+         (emit "  je " true-label)
          (emit-immediate #f)
-         (print "  jmp " end-label)
-         (print true-label ":")
+         (emit "  jmp " end-label)
+         (emit true-label ":")
          (emit-immediate #t)
-         (print end-label ":")
+         (emit end-label ":")
          (emit-comment "end " (car expr))))
     ((variable? expr)
      (emit-variable-ref env expr))
@@ -111,7 +112,7 @@
   (cond
     ((immediate? expr)
      (emit-immediate expr)
-     (print "  ret"))
+     (emit "  ret"))
     ((if? expr)
      (emit-tail-if stack-index env expr))
     ((and? expr) (emit-tail-expr stack-index env (and->if expr)))
@@ -119,28 +120,27 @@
     ((let? expr) (emit-tail-let stack-index env expr))
     ((let*? expr) (emit-tail-let* stack-index env expr))
     ((apply? expr) (emit-tail-apply stack-index env expr))
-    ((cons? expr) (emit-cons stack-index env expr))
     ((primitive? expr)
      (emit-comment (car expr))
      ((lookup-primitive (car expr)) stack-index env (cdr expr))
      (emit-comment "end " (car expr))
-     (print " ret"))
+     (emit " ret"))
     ((predicate? expr)
        (let ((raw-predicate (lookup-raw-predicate (car expr)))
              (true-label (unique-label "true"))
              (end-label (unique-label "end")))
          (emit-comment (car expr))
          (raw-predicate stack-index env (cdr expr))
-         (print "  je " true-label)
+         (emit "  je " true-label)
          (emit-immediate #f)
-         (print "  jmp " end-label)
-         (print true-label ":")
+         (emit "  jmp " end-label)
+         (emit true-label ":")
          (emit-immediate #t)
-         (print end-label ":")
+         (emit end-label ":")
          (emit-comment "end " (car expr))))
     ((variable? expr)
      (emit-tail-variable-ref env expr)
-     (print "  ret"))
+     (emit "  ret"))
     (else
       (error "Unknown expression: " expr))))
 
@@ -156,7 +156,6 @@
   (emit-expr wordsize env expr)
   (emit "  ret")
   (emit "  .text")
-  (emit-function-header "scheme_entry")
   (emit-function-header "scheme_entry")
   ; 64bit calling convention:
   ; RDI, RSI, RDX, RCX (R10 in the Linux kernel interface), R8, and R9
@@ -213,9 +212,9 @@
   (emit "  ret"))
 
 (define (emit-function-header name)
-  (print "  .globl " name)
-  (print "  .type " name ", @function")
-  (print name ":"))
+  (emit "  .globl " name)
+  (emit "  .type " name ", @function")
+  (emit name ":"))
 
 ; (emit-program '(fxzero? 1))
 ; (emit-program '(boolean? #\A))
@@ -239,14 +238,13 @@
 ;      (let* ((x (fx+ x 1))
 ;            (y (fx+ x 1)))
 ;        y)))
-
-(emit-program
-  '(letrec
-     ((sum (lambda (n acc)
-            (if (fxzero? n)
-                acc
-                (apply sum (fxsub1 n) (fx+ n acc))))))
-     (apply sum 6000 0)))
+; (emit-program
+;   '(letrec
+;      ((sum (lambda (n acc)
+;             (if (fxzero? n)
+;                 acc
+;                 (apply sum (fxsub1 n) (fx+ n acc))))))
+;      (apply sum 6000 0)))
 ; (emit-program
 ;   '(letrec
 ;      ((fac (lambda (n)
@@ -255,3 +253,5 @@
 ;                 (fx+ n (apply fac (fxsub1 n)))))))
 ;      (apply fac 4000)))
 ; (emit-program '(cons (cons 1 2) (cons 3 4)))
+(emit-program '(cons 3 (cons 4 5)))
+; (emit-program '(make-vector 5 #t))

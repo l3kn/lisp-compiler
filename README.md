@@ -4,4 +4,4 @@
 
 - [ ] Refactor `emit-tail` functions
 - [x] Refactor primitives
-- [ ] Find a way to make the code for `cons` shorter
+- [x] Find a way to make the code for `cons` shorter
