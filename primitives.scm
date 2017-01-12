@@ -7,6 +7,10 @@
     (set! raw-predicates
           (cons (list name body) old))))
 
+(define (predicate? expr)
+  (and (pair? expr)
+       (assoc (car expr) raw-predicates)))
+
 (define primitives '())
 
 (define (register-primitive name body)
@@ -14,26 +18,15 @@
     (set! primitives
           (cons (list name body) old))))
 
-(register-raw-predicate 'boolean?
-      (lambda (stack-index env args)
-        (let ((arg (car args)))
-          (emit-expr stack-index env arg)
-          (print "  and rax, " bool_mask)
-          (print "  cmp rax, " bool_tag))))
+(define (primitive? expr)
+  (and (pair? expr)
+       (assoc (car expr) primitives)))
+
 (register-raw-predicate 'null?
       (lambda (stack-index env args)
         (let ((arg (car args)))
           (emit-expr stack-index env arg)
           (print "  cmp rax, " (immediate-rep '())))))
-(register-raw-predicate 'not
-      (lambda (stack-index env args)
-        (let ((arg (car args)))
-          (emit-expr stack-index env arg)
-          (print "  cmp rax, " (immediate-rep #f)))))
-
-(define (predicate? expr)
-  (and (pair? expr)
-       (assoc (car expr) raw-predicates)))
 
 (define (emit-binop stack-index env arg1 arg2 binop)
   (emit-expr stack-index env arg2)
@@ -63,6 +56,3 @@
       (emit-expr (next-stack-index stack-index) arg1)
       (print "  cmp rax, [rsp - " stack-index "]"))))
 
-(define (primitive? expr)
-  (and (pair? expr)
-       (assoc (car expr) primitives)))

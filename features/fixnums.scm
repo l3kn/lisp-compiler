@@ -1,3 +1,15 @@
+(define fixnum_shift 2)
+(define fixnum_mask #b11)
+(define fixnum_tag #b00)
+
+(define fixnum_bits (- (* wordsize 8) fixnum_shift))
+(define fixnum_lower (- (expt 2 (- fixnum_bits 1))))
+(define fixnum_upper (sub1 (expt 2 (- fixnum_bits 1))))
+
+(define (fixnum? x)
+  (and (integer? x)
+       (<= fixnum_lower x fixnum_upper)))
+
 (register-raw-predicate 'fxzero?
       (lambda (stack-index env args)
         (let ((arg (car args)))

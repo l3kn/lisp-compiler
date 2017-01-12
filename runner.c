@@ -22,6 +22,9 @@
 #define pair_mask 0b00000111
 #define pair_tag 0b00000001
 
+#define vector_mask 0b00000111
+#define vector_tag 0b00000101
+
 typedef struct {
   void* rax; /* 0 scratch */
   void* rbx; /* 8 preserve */
@@ -49,6 +52,18 @@ static void print_ptr(ptr x, char* heap) {
     printf(" . ");
     print_ptr(cons[1], heap);
     printf(")");
+  } else if ((x & vector_mask) == vector_tag) {
+    ptr* vector = (ptr*)((x >> 3) << 3);
+    int size = vector[0];
+    printf("<size: %d| ", size);
+    for (int i = 0; i < size; i++) {
+      print_ptr(vector[i+1], heap);
+      if (i==(size-1)) {
+        printf(">");
+      } else {
+        printf(", ");
+      }
+    }
   } else if (x == bool_true) {
     printf("#t");
   } else if (x == bool_false) {

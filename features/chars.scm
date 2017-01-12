@@ -1,3 +1,7 @@
+(define char_shift 8)
+(define char_mask #b11111111)
+(define char_tag #b00001111)
+
 (register-raw-predicate 'char?
       (lambda (stack-index env args)
         (let ((arg (car args)))
