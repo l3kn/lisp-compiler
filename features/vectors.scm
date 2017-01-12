@@ -43,3 +43,19 @@
           (emit "  mov rax, r11")
           (emit "  or rax, " vector_tag)
           )))
+
+(register-primitive 'vector-ref
+      (lambda (stack-index env args)
+        (let ((vec (car args))
+              (index (cadr args)))
+          (emit-expr stack-index env vec)
+          (emit "  mov r10, rax")
+          ; Fill tag field w/ 0s
+          (emit "  shr r10, 3")
+          (emit "  shl r10, 3")
+          ; TODO: Check if index is in range
+          (emit-expr stack-index env index)
+          (emit "  add rax, 1")
+          (emit "  shl rax, 3")
+          (emit "  add rax, r10")
+          (emit "  mov rax, [rax]"))))

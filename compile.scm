@@ -253,5 +253,4 @@
 ;                 (fx+ n (apply fac (fxsub1 n)))))))
 ;      (apply fac 4000)))
 ; (emit-program '(cons (cons 1 2) (cons 3 4)))
-(emit-program '(cons 3 (cons 4 5)))
-; (emit-program '(make-vector 5 #t))
+(emit-program '(vector-ref (make-vector 5 #t) 4))

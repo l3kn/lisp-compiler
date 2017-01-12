@@ -55,11 +55,11 @@ static void print_ptr(ptr x, char* heap) {
   } else if ((x & vector_mask) == vector_tag) {
     ptr* vector = (ptr*)((x >> 3) << 3);
     int size = vector[0];
-    printf("<size: %d| ", size);
+    printf("[ size: %d | ", size);
     for (int i = 0; i < size; i++) {
       print_ptr(vector[i+1], heap);
       if (i==(size-1)) {
-        printf(">");
+        printf(" ]");
       } else {
         printf(", ");
       }
