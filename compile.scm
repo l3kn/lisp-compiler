@@ -253,4 +253,12 @@
 ;                 (fx+ n (apply fac (fxsub1 n)))))))
 ;      (apply fac 4000)))
 ; (emit-program '(cons (cons 1 2) (cons 3 4)))
-(emit-program '(vector-ref (make-vector 5 #t) 4))
+; (emit-program '(vector-ref (make-vector 5 #t) 4))
+(emit-program '(let*
+                 ((x (make-vector 5 0))
+                  (y (vector-set! x 0 0))
+                  (z (vector-set! x 1 1))
+                  (w (vector-set! x 2 2))
+                  (v (vector-set! x 3 3))
+                  (u (vector-set! x 4 4)))
+                  (vector-ref x 3)))

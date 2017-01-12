@@ -55,7 +55,31 @@
           (emit "  shl r10, 3")
           ; TODO: Check if index is in range
           (emit-expr stack-index env index)
-          (emit "  add rax, 1")
-          (emit "  shl rax, 3")
+          (emit "  add rax, 4")
+          (emit "  shl rax, 1")
           (emit "  add rax, r10")
           (emit "  mov rax, [rax]"))))
+
+(register-primitive 'vector-set!
+      (lambda (stack-index env args)
+        (let ((vec (car args))
+              (index (cadr args))
+              (value (caddr args)))
+          (emit-expr stack-index env vec)
+          (emit "  mov r10, rax")
+          ; Fill tag field w/ 0s
+          (emit "  shr r10, 3")
+          (emit "  shl r10, 3")
+          ; TODO: Check if index is in range
+          (emit "  mov [rsp - " stack-index "], r10")
+          (emit-expr (next-stack-index stack-index) env index)
+          (emit "  mov r10, [rsp - " stack-index "]")
+          (emit "  add rax, 4")
+          (emit "  shl rax, 1")
+          (emit "  add r10, rax")
+          (emit "  mov [rsp - " stack-index "], r10")
+          (emit-expr (next-stack-index stack-index) env value)
+          (emit "  mov r10, [rsp - " stack-index "]")
+          (emit "  mov [r10], rax"))))
+
+
