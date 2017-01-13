@@ -13,31 +13,31 @@
 (register-raw-predicate 'fxzero?
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (print "  cmp rax, " (immediate-rep 0)))))
 
 (register-raw-predicate 'fixnum?
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (print "  and rax, " fixnum_mask)
           (print "  cmp rax, " fixnum_tag))))
 
 (register-primitive 'fxadd1
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (print "  add rax, " (immediate-rep 1)))))
 (register-primitive 'fxsub1
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (print "  sub rax, " (immediate-rep 1)))))
 
 (register-primitive 'fxlognot
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (print "  shr rax, " fixnum_shift)
           (print "  not rax")
           (print "  shl rax, " fixnum_shift))))

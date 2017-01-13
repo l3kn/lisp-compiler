@@ -4,7 +4,7 @@
 (register-raw-predicate 'vector?
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (emit "  and rax, " vector_mask)
           (emit "  cmp rax, " vector_tag))))
 

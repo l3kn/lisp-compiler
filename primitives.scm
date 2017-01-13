@@ -25,16 +25,16 @@
 (register-raw-predicate 'null?
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (print "  cmp rax, " (immediate-rep '())))))
 
 (define (emit-binop stack-index env arg1 arg2 binop)
-  (emit-expr stack-index env arg2)
+  (emit-expr stack-index env arg2 #f)
   (if (immediate? arg1)
     (print "  " binop " rax, " (immediate-rep arg1))
     (begin
       (print "  mov [rsp - " stack-index "], rax")
-      (emit-expr (next-stack-index stack-index) env arg1)
+      (emit-expr (next-stack-index stack-index) env arg1 #f)
       (print "  " binop " rax, [rsp - " stack-index "]"))))
 
 (define (emit-test stack-index env jump)

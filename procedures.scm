@@ -29,7 +29,7 @@
         (stack-index wordsize))
     (define (loop formals stack-index env)
       (if (null? formals)
-          (emit-tail-expr stack-index env body)
+          (emit-expr stack-index env body #t)
           (loop (cdr formals)
                 (next-stack-index stack-index)
                 (extend-env (car formals) stack-index env))))
@@ -41,19 +41,8 @@
 (define call-target cadr)
 (define call-args cddr)
 
-(define (emit-apply stack-index env expr)
+(define (emit-apply stack-index env expr tail)
   ; (print "SI: " stack-index)
-  (define (emit-arguments stack-index args)
-    (if (not (null? args))
-      (begin
-        (emit-stack-save stack-index env (car args))
-        (emit-arguments (next-stack-index stack-index) (cdr args)))))
-  (emit-arguments (next-stack-index stack-index) (call-args expr))
-  (emit-adjust-base (prev-stack-index stack-index))
-  (emit-call stack-index (lookup (call-target expr) env) env)
-  (emit-adjust-base (- (prev-stack-index stack-index))))
-
-(define (emit-tail-apply stack-index env expr)
   (define (emit-arguments stack-index args)
     (if (not (null? args))
       (begin
@@ -65,12 +54,19 @@
         (print "  mov rax, [rsp - " (+ stack-index offset) "]")
         (print "  mov [rsp - " stack-index "], rax")
         (move-arguments (next-stack-index stack-index) offset (cdr args)))))
-  (print "  # evaluate arguments")
-  (emit-arguments (next-stack-index stack-index) (call-args expr))
-  (print "  # TCO, move arguments down")
-  (let ((offset (* wordsize (add1 (length (call-args expr))))))
-    (move-arguments (prev-stack-index (prev-stack-index stack-index)) offset (call-args expr)))
-  (emit-jump stack-index (lookup (call-target expr) env) env))
+  (if tail
+    (begin
+      (print "  # evaluate arguments")
+      (emit-arguments (next-stack-index stack-index) (call-args expr))
+      (print "  # TCO, move arguments down")
+      (let ((offset (* wordsize (add1 (length (call-args expr))))))
+        (move-arguments (prev-stack-index (prev-stack-index stack-index)) offset (call-args expr)))
+      (emit-jump stack-index (lookup (call-target expr) env) env))
+    (begin
+      (emit-arguments (next-stack-index stack-index) (call-args expr))
+      (emit-adjust-base (prev-stack-index stack-index))
+      (emit-call stack-index (lookup (call-target expr) env) env)
+      (emit-adjust-base (- (prev-stack-index stack-index))))))
 
 (define (emit-adjust-base offset)
   (if (< 0 offset)

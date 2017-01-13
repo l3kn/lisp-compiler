@@ -1,7 +1,7 @@
 (register-primitive 'sys-write
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           ; Now rax should contain a pointer to the heap
           ; 8 bytes size | 1 byte char1 | 1 byte char2 | ...
           (emit "  mov rdi, QWORD PTR 1") ; file descriptor

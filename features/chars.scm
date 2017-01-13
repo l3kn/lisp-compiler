@@ -5,7 +5,7 @@
 (register-raw-predicate 'char?
       (lambda (stack-index env args)
         (let ((arg (car args)))
-          (emit-expr stack-index env arg)
+          (emit-expr stack-index env arg #f)
           (print "  and rax, " char_mask)
           (print "  cmp rax, " char_tag))))
 
