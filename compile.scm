@@ -13,6 +13,8 @@
 (include "features/fixnums.scm")
 (include "features/chars.scm")
 (include "features/type_conversions.scm")
+(include "features/system.scm")
+(include "features/string.scm")
 
 (define (tagged-list? expr tag)
   (and (pair? expr)
@@ -86,6 +88,7 @@
     ((let? expr) (emit-let stack-index env expr))
     ((let*? expr) (emit-let* stack-index env expr))
     ((apply? expr) (emit-apply stack-index env expr))
+    ((string? expr) (emit-string stack-index env expr))
     ((primitive? expr)
      (emit-comment (car expr))
      ((lookup-primitive (car expr)) stack-index env (cdr expr))
@@ -120,6 +123,7 @@
     ((let? expr) (emit-tail-let stack-index env expr))
     ((let*? expr) (emit-tail-let* stack-index env expr))
     ((apply? expr) (emit-tail-apply stack-index env expr))
+    ((string? expr) (emit-tail-string stack-index env expr))
     ((primitive? expr)
      (emit-comment (car expr))
      ((lookup-primitive (car expr)) stack-index env (cdr expr))
@@ -249,16 +253,28 @@
 ;   '(letrec
 ;      ((fac (lambda (n)
 ;             (if (fxzero? n)
-;                 0
-;                 (fx+ n (apply fac (fxsub1 n)))))))
-;      (apply fac 4000)))
+;                 1
+;                 (fx* n (apply fac (fxsub1 n)))))))
+;      (apply fac 20)))
+; (emit-program
+;   '(letrec
+;      ((fac (lambda (n)
+;              (let ((a (fxzero? n)))
+;                (if a
+;                   1
+;                   (let ((b (fxsub1 n)))
+;                     (let ((c (apply fac b)))
+;                       (fx* n c))))))))
+;      (apply fac 20)))
 ; (emit-program '(cons (cons 1 2) (cons 3 4)))
 ; (emit-program '(vector-ref (make-vector 5 #t) 4))
-(emit-program '(let*
-                 ((x (make-vector 5 0))
-                  (y (vector-set! x 0 0))
-                  (z (vector-set! x 1 1))
-                  (w (vector-set! x 2 2))
-                  (v (vector-set! x 3 3))
-                  (u (vector-set! x 4 4)))
-                  (vector-ref x 3)))
+; (emit-program '(let*
+;                  ((x (make-vector 5 0))
+;                   (y (vector-set! x 0 0))
+;                   (z (vector-set! x 1 1))
+;                   (w (vector-set! x 2 2))
+;                   (v (vector-set! x 3 3))
+;                   (u (vector-set! x 4 4)))
+;                   (vector-ref x 3)))
+; (emit-program '(fx/ 10 5))
+(emit-program '(sys-write "hello world\n\r"))

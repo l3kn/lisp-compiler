@@ -71,6 +71,15 @@
           (print "  shr rax, " fixnum_shift)
           (print "  imul rax, [rsp - " stack-index "]")
           (print "  shl rax, " fixnum_shift))))
+(register-primitive 'fx/
+      (lambda (stack-index env args)
+        (let ((arg1 (car args))
+              (arg2 (cadr args)))
+          (emit-expr stack-index env arg2)
+          (print "  mov [rsp - " stack-index "], rax")
+          (emit-expr (next-stack-index stack-index) env arg1)
+          (print "  idiv rax, [rsp - " stack-index "]")
+          (print "  shl rax, " fixnum_shift))))
 (register-primitive 'fx=?
       (lambda (stack-index env args)
         (emit-comparison stack-index env (car args) (cadr args))
