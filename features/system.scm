@@ -7,6 +7,6 @@
           (emit "  mov rdi, QWORD PTR 1") ; file descriptor
           (emit "  mov rdx, [rax]") ; size = first 8 bytes of the string
           (emit "  add rax, 8")
-          (emit "  mov rsi, rax") ; buffer = string ptr + 8
+          (emit "  mov rsi, rax") ; buffer = *string + 8
           (emit "  mov rax, QWORD PTR 1") ; syscall #1 = sys_write
           (emit "  syscall"))))

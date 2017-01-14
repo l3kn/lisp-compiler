@@ -40,6 +40,9 @@
 
 (define (variable? expr) (symbol? expr))
 
+(define (emit-label label)
+  (emit label ":"))
+
 (define (emit-comment . args)
   (apply emit (cons "  # " args)))
 
@@ -124,22 +127,22 @@
   ; stack_base: RSI
   ; heap: RDX
   (emit-comment "store register contents in ctxt")
-  (emit "  mov rcx, rdi")
-  (emit "  mov [rcx + 8], rbx")
-  (emit "  mov [rcx + 32], rsi")
-  (emit "  mov [rcx + 40], rdi")
-  (emit "  mov [rcx + 48], rbp")
-  (emit "  mov [rcx + 56], rsp")
+  (emit "  mov r15, rdi")
+  (emit "  mov [r15 + 8], rbx")
+  (emit "  mov [r15 + 32], rsi")
+  (emit "  mov [r15 + 40], rdi")
+  (emit "  mov [r15 + 48], rbp")
+  (emit "  mov [r15 + 56], rsp")
   (emit-comment "load stack_base and heap addresses")
   (emit "  mov rsp, rsi")
   (emit "  mov rbp, rdx")
   (emit "  call scheme_body")
   (emit-comment "store register contents in ctxt")
-  (emit "  mov rbx, [rcx + 8]")
-  (emit "  mov rsi, [rcx + 32]")
-  (emit "  mov rdi, [rcx + 40]")
-  (emit "  mov rbp, [rcx + 48]")
-  (emit "  mov rsp, [rcx + 56]")
+  (emit "  mov rbx, [r15 + 8]")
+  (emit "  mov rsi, [r15 + 32]")
+  (emit "  mov rdi, [r15 + 40]")
+  (emit "  mov rbp, [r15 + 48]")
+  (emit "  mov rsp, [r15 + 56]")
   (emit "  ret"))
 
 (define (emit-function-header name)
@@ -204,4 +207,7 @@
 ;                   (u (vector-set! x 4 4)))
 ;                   (vector-ref x 3)))
 ; (emit-program '(fx/ 10 5))
-(emit-program '(sys-write "hello world\n\r"))
+; (emit-program '(sys-write "hello world"))
+; (emit-program '(string-length (fixnum->string 123)))
+(emit-program '(sys-write (fixnum->string 1234)))
+; (emit-program '(fixnum->string 0))
