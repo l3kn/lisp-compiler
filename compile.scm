@@ -1,20 +1,28 @@
 (define wordsize 8)
 
 (include "environment.scm")
+(include "asm.scm")
 (include "syntax/derived/and.scm")
 (include "syntax/derived/or.scm")
 (include "syntax/if.scm")
+(include "syntax/begin.scm")
 (include "syntax/let.scm")
 (include "primitives.scm")
 (include "procedures.scm")
 (include "features/booleans.scm")
-(include "features/pairs.scm")
-(include "features/vectors.scm")
+; (include "features/pairs.scm")
+; (include "features/vectors.scm")
 (include "features/fixnums.scm")
-(include "features/chars.scm")
+; (include "features/chars.scm")
 (include "features/type_conversions.scm")
 (include "features/system.scm")
-(include "features/string.scm")
+; (include "features/string.scm")
+
+(define empty_list #b00111111)
+
+(define (string-join lst) (foldl string-append "" lst))
+
+(define (show . args) (string-join (map ->string args)))
 
 (define (tagged-list? expr tag)
   (and (pair? expr)
@@ -55,24 +63,34 @@
 (define (emit-variable-ref env var tail)
   (let ((location (lookup var env)))
     (if location
-        (emit-stack-load location)
+        (emit-stack-load_ location)
         (else (error "Reference to unbound variable: " var)))))
 
-(define (emit-stack-save stack-index env expr)
+(define (emit-stack-save stack-index env expr tail)
   (if (immediate? expr)
-    (emit "  mov [rsp - " stack-index "], QWORD PTR " (immediate-rep expr))
+    (emit (push (immediate-rep expr)))
     (begin
-      (emit-expr stack-index env expr)
-      (emit "  mov [rsp - " stack-index "], rax"))))
+      (emit-expr stack-index env expr tail)
+      (emit (push rax)))))
 
 (define (emit-stack-load stack-index)
-  (emit "  mov rax, [rsp - " stack-index "]"))
+  (emit (pop rax)))
+
+(define (emit-stack-save_ stack-index env expr tail)
+  (if (immediate? expr)
+    (emit (mov (offset rsp (- stack-index)) (immediate-rep expr)))
+    (begin
+      (emit-expr stack-index env expr tail)
+      (emit (mov (offset rsp (- stack-index)) rax)))))
+
+(define (emit-stack-load_ stack-index)
+  (emit (mov rax (offset rsp (- stack-index)))))
 
 (define (emit . output)
   (apply print output))
 
 (define (emit-immediate expr)
-  (emit "  mov rax, QWORD PTR " (immediate-rep expr)))
+  (emit (mov rax (immediate-rep expr))))
 
 (define (emit-expr stack-index env expr tail)
   (cond
@@ -80,33 +98,59 @@
      (emit-immediate expr))
     ((if? expr)
      (emit-if stack-index env expr tail))
+    ((begin? expr)
+     (emit-begin stack-index env expr tail))
     ((and? expr) (emit-expr stack-index env (and->if expr) tail))
     ((or? expr) (emit-expr stack-index env (or->if expr) tail))
     ((let? expr) (emit-let stack-index env expr tail))
     ((let*? expr) (emit-let* stack-index env expr tail))
     ((apply? expr) (emit-apply stack-index env expr tail))
     ((string? expr) (emit-string stack-index env expr))
-    ((primitive? expr)
-     (emit-comment (car expr))
-     ((lookup-primitive (car expr)) stack-index env (cdr expr))
-     (emit-comment "end " (car expr)))
-    ((predicate? expr)
-       (let ((raw-predicate (lookup-raw-predicate (car expr)))
-             (true-label (unique-label "true"))
-             (end-label (unique-label "end")))
-         (emit-comment (car expr))
-         (raw-predicate stack-index env (cdr expr))
-         (emit "  je " true-label)
-         (emit-immediate #f)
-         (emit "  jmp " end-label)
-         (emit true-label ":")
-         (emit-immediate #t)
-         (emit end-label ":")
-         (emit-comment "end " (car expr))))
+    ; ((primitive? expr)
+    ;  (emit-comment (car expr))
+    ;  ((lookup-primitive (car expr)) stack-index env (cdr expr))
+    ;  (emit-comment "end " (car expr)))
+    ; ((predicate? expr)
+    ;    (let ((raw-predicate (lookup-raw-predicate (car expr)))
+    ;          (true-label (unique-label "true"))
+    ;          (end-label (unique-label "end")))
+    ;      (emit-comment (car expr))
+    ;      (raw-predicate stack-index env (cdr expr))
+    ;      (emit (je true-label))
+    ;      (emit-immediate #f)
+    ;      (emit (jmp end-label))
+    ;      (emit true-label ":")
+    ;      (emit-immediate #t)
+    ;      (emit end-label ":")
+    ;      (emit-comment "end " (car expr))))
+    ((list? expr)
+     (let ((name (car expr))
+           (args (cdr expr)))
+       (emit-arguments stack-index env args tail)
+       (emit (sub rsp stack-index))
+       (emit (call (escape name)))
+       (emit (add rsp stack-index))))
     ((variable? expr)
      (emit-variable-ref env expr tail))
     (else
       (error "Unknown expression: " expr))))
+
+(define calling-convention
+  (list rdi rsi rdx rcx r8 r9))
+
+(define (emit-arguments stack-index env args tail)
+  (if (> (length args) (length calling-convention))
+      (error "Functions can have max. 6 arguments"))
+  (define (helper args registers)
+    (if (not (null? args))
+      (begin
+         (if (immediate? (car args))
+             (emit (mov (car registers) (immediate-rep (car args))))
+             (begin
+               (emit-expr stack-index env (car args) tail)
+               (emit (mov (car registers) rax))))
+         (helper (cdr args) (cdr registers)))))
+  (helper args calling-convention))
 
 (define (emit-program expr)
   (emit "  .intel_syntax noprefix")
@@ -115,55 +159,140 @@
       (emit-letrec expr #f)
       (emit-scheme-entry expr empty-env #f)))
 
+(define primitives '())
+
+(define (register-primitive name code)
+  (let ((old primitives))
+    (set! primitives (cons (list name code) old))))
+
+(register-primitive 'fx+
+  (list
+    (mov rax rdi)
+    (add rax rsi)
+    (ret)
+    ))
+(register-primitive 'fx-
+  (list
+    (mov rax rdi)
+    (sub rax rsi)
+    (ret)
+    ))
+(register-primitive 'fxzero?
+  (list
+    (xor rax rax) ; reset rax
+    (cmp rdi (immediate-rep 0))
+    ; bool_false = #b00101111
+    ; bool_true  = #b01101111
+    (sete '(reg al))
+    ; rax = 0....01 or
+    ; rax = 0....00
+    (sal rax 6)
+    ; rax = 0....01000000 or
+    ; rax = 0....00000000
+    (or_ rax (immediate-rep #f))
+    ; rax = 0....01101111 or
+    ; rax = 0....00101111
+    (ret)))
+(register-primitive 'fxadd1
+  (list
+    (mov rax rdi)
+    (add rax (immediate-rep 1))
+    (ret)))
+(register-primitive 'fxsub1
+  (list
+    (mov rax rdi)
+    (sub rax (immediate-rep 1))
+    (ret)))
+(register-primitive 'not
+  (list
+    (xor rax rax) ; reset rax
+    (cmp rdi (immediate-rep #t))
+    (setne '(reg al))
+    (sal rax 6)
+    (or_ rax (immediate-rep #f))
+    (ret)))
+
+(define (emit-primitives)
+  (for-each (lambda (entry)
+              (emit-function-header (escape (car entry)))
+              (for-each emit (cadr entry)))
+            primitives))
+
 (define (emit-scheme-entry expr env tail)
   (emit-function-header "scheme_body")
   (emit-expr wordsize env expr tail)
-  (emit "  ret")
-  (emit "  .text")
-  (emit-function-header "scheme_entry")
-  ; 64bit calling convention:
-  ; RDI, RSI, RDX, RCX (R10 in the Linux kernel interface), R8, and R9
-  ; ctxt: RDI
-  ; stack_base: RSI
-  ; heap: RDX
-  (emit-comment "store register contents in ctxt")
-  (emit "  mov r15, rdi")
-  (emit "  mov [r15 + 8], rbx")
-  (emit "  mov [r15 + 32], rsi")
-  (emit "  mov [r15 + 40], rdi")
-  (emit "  mov [r15 + 48], rbp")
-  (emit "  mov [r15 + 56], rsp")
-  (emit-comment "load stack_base and heap addresses")
-  (emit "  mov rsp, rsi")
-  (emit "  mov rbp, rdx")
-  (emit "  call scheme_body")
-  (emit-comment "store register contents in ctxt")
-  (emit "  mov rbx, [r15 + 8]")
-  (emit "  mov rsi, [r15 + 32]")
-  (emit "  mov rdi, [r15 + 40]")
-  (emit "  mov rbp, [r15 + 48]")
-  (emit "  mov rsp, [r15 + 56]")
-  (emit "  ret"))
+  (emit (ret)))
+
+; Scheme entry:
+; (emit "  ret")
+; (print "  .text")
+; (emit-function-header "scheme_entry")
+; ; 64bit calling convention:
+; ; RDI, RSI, RDX, RCX (R10 in the Linux kernel interface), R8, and R9
+; ; ctxt: RDI
+; ; stack_base: RSI -> RSP, RBP
+; ; heap: RDX -> RBX
+; ; TODO: Don't use ctxt, just push all regs
+; (emit-comment "store register contents in ctxt")
+
+; ; Store old stack pointers in unused volative registers
+; (emit (mov rcx rsp))
+; (emit (mov rdx rbp))
+
+; ; Load the new rsp and rbp
+; (emit (mov rsp rsi))
+; (emit (mov rbp rsi))
+
+; ; Store the old registers on the stack
+; (emit (push rcx)) ; old rsp
+; (emit (push rdx)) ; old rbp
+; (emit (push rbx))
+; (emit (push rsi))
+; (emit (push rdi))
+
+; ; Execute the main body
+; ; (emit "  mov rbx, rdx")
+; (emit "  call scheme_body")
+
+; ; Restore the old registers from the stack
+; (emit (pop rdi))
+; (emit (pop rsi))
+; (emit (pop rbx))
+; (emit (pop rbp))
+; (emit (pop rsp))
+; ; (emit "  mov rax, 60")
+; ; (emit "  mov rdi, 0")
+; ; (emit "  syscall")
+; (emit (ret)))
 
 (define (emit-function-header name)
   (emit "  .globl " name)
   (emit "  .type " name ", @function")
   (emit name ":"))
 
-; (emit-program '(fxzero? 1))
+(define (escape str)
+  (let ((parts (map ->string (string->list (->string str)))))
+    (string-join
+      (cons "prim_"
+        (map
+          (lambda (part)
+            (cond
+              ((equal? part "+") "_plus_")
+              ((equal? part "-") "_minus_")
+              ((equal? part ">") "_greater_")
+              ((equal? part "<") "_less_")
+              ((equal? part "=") "_equal_")
+              ((equal? part "*") "_times_")
+              ((equal? part "?") "_questionmark_")
+              (else part)))
+          parts)))))
+
 ; (emit-program '(boolean? #\A))
-; (emit-program '(if #t (if (fxzero? 0) #\a #\b) #\c))
 ; (emit-program '(char->fixnum #\A))
 ; (emit-program '(fixnum->char 65))
 ; (emit-program '(not #t))
 ; (emit-program '(fxlognot -11))
 ; (emit-program 10)
-; (emit-program '(or #f #f))
-; (emit-program '(if (fxzero? 0) #\y #\n))
-; (emit-program '(fx+ (fx- 1 2) 3))
-; (emit-program
-;   '(fx+ 10
-;         (if #t 20 30)))
 ; (emit-program '(char<? #\Z #\B))
 ; (emit-program '(fx- 5 10)) 
 ; (emit-program '(let ((a 1) (b 2)) (fx+ a b)))
@@ -178,7 +307,7 @@
 ;             (if (fxzero? n)
 ;                 acc
 ;                 (apply sum (fxsub1 n) (fx+ n acc))))))
-;      (apply sum 6000 0)))
+;      (apply sum 0 0)))
 ; (emit-program
 ;   '(letrec
 ;      ((fac (lambda (n)
@@ -198,16 +327,9 @@
 ;      (apply fac 20)))
 ; (emit-program '(cons (cons 1 2) (cons 3 4)))
 ; (emit-program '(vector-ref (make-vector 5 #t) 4))
-; (emit-program '(let*
-;                  ((x (make-vector 5 0))
-;                   (y (vector-set! x 0 0))
-;                   (z (vector-set! x 1 1))
-;                   (w (vector-set! x 2 2))
-;                   (v (vector-set! x 3 3))
-;                   (u (vector-set! x 4 4)))
-;                   (vector-ref x 3)))
 ; (emit-program '(fx/ 10 5))
 ; (emit-program '(sys-write "hello world"))
 ; (emit-program '(string-length (fixnum->string 123)))
-(emit-program '(sys-write (fixnum->string 1234)))
+; (emit-program '(sys-write (fixnum->string 1234)))
+; (emit-program '(display "hello"))
 ; (emit-program '(fixnum->string 0))

@@ -136,7 +136,9 @@ int main(int argc, char** argv) {
   char* heap = allocate_protected_space(heap_size);
 
   context ctxt;
-  print_ptr(scheme_entry(&ctxt, stack_base, heap), heap);
+  ptr result = scheme_entry(&ctxt, stack_base, heap);
+
+  print_ptr(result, heap);
   printf("\n");
 
   deallocate_protected_space(stack_top, stack_size);

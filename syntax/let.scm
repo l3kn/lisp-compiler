@@ -5,28 +5,16 @@
 (define let-binding-value cadr)
 (define let-binding-variable car)
 
-(define (emit-let stack-index env expr)
+(define (emit-let stack-index env expr tail)
   (define (process-let bindings stack-index new-env)
     (cond
       ((null? bindings)
-       (emit-expr stack-index new-env (let-body expr)))
+       (emit-expr stack-index new-env (let-body expr) tail))
       (else
         (let ((b (car bindings)))
-          (emit-stack-save stack-index env (let-binding-value b))
-          (process-let
-            (cdr bindings)
-            (next-stack-index stack-index)
-            (extend-env (let-binding-variable b) stack-index new-env))))))
-  (process-let (let-bindings expr) stack-index env))
-
-(define (emit-tail-let stack-index env expr)
-  (define (process-let bindings stack-index new-env)
-    (cond
-      ((null? bindings)
-       (emit-tail-expr stack-index new-env (let-body expr)))
-      (else
-        (let ((b (car bindings)))
-          (emit-stack-save stack-index env (let-binding-value b))
+          (emit-comment "Binding")
+          (emit-stack-save_ stack-index env (let-binding-value b) #f)
+          (emit-comment "/Binding")
           (process-let
             (cdr bindings)
             (next-stack-index stack-index)
@@ -34,28 +22,14 @@
   (process-let (let-bindings expr) stack-index env))
 
 (define (let*? expr) (tagged-list? expr 'let*))
-(define (emit-let* stack-index env expr)
+(define (emit-let* stack-index env expr tail)
   (define (process-let bindings stack-index new-env)
     (cond
       ((null? bindings)
-       (emit-expr stack-index new-env (let-body expr)))
+       (emit-expr stack-index new-env (let-body expr) tail))
       (else
         (let ((b (car bindings)))
-          (emit-stack-save stack-index new-env (let-binding-value b))
-          (process-let
-            (cdr bindings)
-            (next-stack-index stack-index)
-            (extend-env (let-binding-variable b) stack-index new-env))))))
-  (process-let (let-bindings expr) stack-index env))
-
-(define (emit-tail-let* stack-index env expr)
-  (define (process-let bindings stack-index new-env)
-    (cond
-      ((null? bindings)
-       (emit-tail-expr stack-index new-env (let-body expr)))
-      (else
-        (let ((b (car bindings)))
-          (emit-stack-save stack-index new-env (let-binding-value b))
+          (emit-stack-save_ stack-index new-env (let-binding-value b) #f)
           (process-let
             (cdr bindings)
             (next-stack-index stack-index)

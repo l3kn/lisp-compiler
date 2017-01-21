@@ -15,15 +15,15 @@
               (loop-label (unique-label "loop"))
               (end-label (unique-label "end")))
           ; Evaluate the size
-          (emit "  mov r10, rbp")
-          (emit "  mov r11, rbp")
+          (emit "  mov r10, rbx")
+          (emit "  mov r11, rbx")
           (emit-expr stack-index env size)
           ; Up till now, the size was stored in the upper 30 bits
           ; of rax, the lower 2 bits are 00b.
           ; We need size * 8 (size in bytes),
           ; so all thats left to do is to multiply by 2
           (emit "  shl rax, 1")
-          (emit "  add rbp, rax")
+          (emit "  add rbx, rax")
           (emit "  mov r12, rax")
           (emit "  shr r12, 3")
           (emit-expr stack-index env default)

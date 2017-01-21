@@ -6,7 +6,7 @@
 (define letrec-binding-variable car)
 (define letrec-binding-value cadr)
 
-(define (emit-letrec expr)
+(define (emit-letrec expr tail)
   (let* ((bindings (letrec-bindings expr))
          (lvars (map letrec-binding-variable bindings))
          (lambdas (map letrec-binding-value bindings))
@@ -15,21 +15,21 @@
                       lvars))
          (env (make-initial-env lvars labels)))
     (for-each (lambda (expr label)
-                (emit-lambda env expr label))
+                (emit-lambda env expr label #f))
               lambdas labels)
-    (emit-scheme-entry (letrec-body expr) env)))
+    (emit-scheme-entry (letrec-body expr) env #t)))
 
 (define lambda-formals cadr)
 (define lambda-body caddr)
 
-(define (emit-lambda env expr label)
+(define (emit-lambda env expr label tail)
   (emit-function-header label)
   (let ((formals (lambda-formals expr))
         (body (lambda-body expr))
         (stack-index wordsize))
     (define (loop formals stack-index env)
       (if (null? formals)
-          (emit-expr stack-index env body #t)
+          (emit-expr stack-index env body tail)
           (loop (cdr formals)
                 (next-stack-index stack-index)
                 (extend-env (car formals) stack-index env))))
@@ -46,7 +46,7 @@
   (define (emit-arguments stack-index args)
     (if (not (null? args))
       (begin
-        (emit-stack-save stack-index env (car args))
+        (emit-stack-save stack-index env (car args) tail)
         (emit-arguments (next-stack-index stack-index) (cdr args)))))
   (define (move-arguments stack-index offset args)
     (if (not (null? args))
@@ -54,7 +54,7 @@
         (print "  mov rax, [rsp - " (+ stack-index offset) "]")
         (print "  mov [rsp - " stack-index "], rax")
         (move-arguments (next-stack-index stack-index) offset (cdr args)))))
-  (if tail
+  (if #f;tail
     (begin
       (print "  # evaluate arguments")
       (emit-arguments (next-stack-index stack-index) (call-args expr))

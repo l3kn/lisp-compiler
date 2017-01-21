@@ -1,6 +1,5 @@
 (define pair_mask #b111)
 (define pair_tag #b001)
-(define empty_list #b00111111)
 
 (register-raw-predicate 'pair?
       (lambda (stack-index env args)
@@ -14,10 +13,10 @@
     ; Increment the base pointer first,
     ; so (cons (cons 1 2) (cons 3 4)) won't mess it up.
     ; car-addr is in r10, cdr-addr in r11
-    (emit "  mov [rsp - " stack-index "], rbp")
-    (emit "  add rbp, 8") 
-    (emit "  mov [rsp - " (next-stack-index stack-index) "], rbp")
-    (emit "  add rbp, 8") 
+    (emit "  mov [rsp - " stack-index "], rbx")
+    (emit "  add rbx, 8") 
+    (emit "  mov [rsp - " (next-stack-index stack-index) "], rbx")
+    (emit "  add rbx, 8") 
     (emit-comment "cons, car")
     (emit-expr (next-stack-index-n stack-index 2) env (car args))
     (emit "  mov r10, [rsp - " stack-index "]")
